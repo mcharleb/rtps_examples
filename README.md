@@ -1,12 +1,10 @@
-# Snapdragon Flight VISLAM-ROS Sample Code
+# Snapdragon Flight VISLAM-RTPS Sample Code
 
-This repo provides the sample code and instructions to run Visual-Inertial Simultaneous Localization And Mapping (VISLAM) as a ROS node on the [Qualcomm Snapdragon Platform](https://developer.qualcomm.com/hardware/snapdragon-flight)<sup>TM</sup>.
+This repo provides the sample code and instructions to run Visual-Inertial Simultaneous Localization And Mapping (VISLAM) as a RTPS node on the [Qualcomm Snapdragon Platform](https://developer.qualcomm.com/hardware/snapdragon-flight)<sup>TM</sup>.
 
 This example code is for MV SDK release [mv_0.9.1](https://developer.qualcomm.com/hardware/snapdragon-flight/tools).
 
-**NOTE**: The older release(mv0.8) instructions are [here](https://github.com/ATLFlight/ros-examples/tree/mv-release-0.8).  The mv0.8 release will deprecated after May. 15th 2017. 
-
-This example assumes that you are familiar with ROS framework.  If you are new to ROS, refer to [ROS Start Guide](http://wiki.ros.org/ROS/StartGuide) first to get started.
+This example assumes that you are familiar with RTPS framework.
 
 1. [High-Level Block Diagram](#high-level-block-diagram)
 1. [Setup and build process](#setup-and-build-process)
@@ -14,14 +12,13 @@ This example assumes that you are familiar with ROS framework.  If you are new t
    * [Pre-requisites](#pre-requisites)
      * [Platform BSP](#platform-bsp)
      * [Cross-Compile Build Environment](#cross-compile-build-environment)
-     * [Install ROS on Snapdragon Platform](#install-ros-on-snapdragon-platform)
+     * [Install FastRTPS on Snapdragon Platform](#install-rtps-on-snapdragon-platform)
      * [Install Snapdragon Machine Vision SDK](#install-snapdragon-machine-vision-sdk)
      * [Machine Vision SDK License Installation](#machine-vision-sdk-license-installation)
    * [Clone and build sample code](#clone-and-build-sample-code)
 1. [Run sample code](#run-sample-code)
-   * [Start roscore](#start-roscore)
    * [Start imu_app application](#start-imu_app-application)
-   * [Start VISLAM ROS node](#start-vislam-ros-node)
+   * [Start VISLAM RTPS node](#start-vislam-rtps-node)
    * [Verification](#verification)
 1. [Snapdragon Machine Vision VISLAM FAQ's](#snapdragon-machine-vision-vislam-faqs)
    * [VISLAM IMU to Camera Transformation(tbc/ombc)](#imu-to-camera-transformation)
@@ -30,9 +27,6 @@ This example assumes that you are familiar with ROS framework.  If you are new t
 ![SnapVislamRosNodeBlockDiagram](images/SnapVislamRosNodeBlockDiagram.jpg)
 
 ## Setup and build process
-
-**NOTE:** These instructions are for VISLAM version mv_0.9.1_8x74.deb.  For earlier versions refer to [this](https://github.com/ATLFlight/ros-examples) page.
-
 
 ### Summary of changes from previous release
 
@@ -44,7 +38,7 @@ This example assumes that you are familiar with ROS framework.  If you are new t
 
 The current build process is supported only on-target (i.e. on the Snapdragon Flight<sup>TM</sup> Board).  Future release(s) will support off-target cross-compilation on a host computer.
 
-The following is an overall workflow for installation, build and execution of the ROS sample apps for Snapdragon Flight<sup>TM</sup>
+The following is an overall workflow for installation, build and execution of the RTPS sample apps for Snapdragon Flight<sup>TM</sup>
 
 ![Installation and build Work Flow](images/InstallationAndBuildWorkflow.jpg)
 
@@ -91,9 +85,9 @@ adb push camera_parameters.h /usr/include
 adb shell sync
 ```
 
-#### Install ROS on Snapdragon Platform.
+#### Install RTPS on Snapdragon Platform.
 
-Refer to the following [page](https://github.com/ATLFlight/ATLFlightDocs/blob/master/SnapdragonROSInstallation.md) for ROS installation on Snapdragon Flight<sup>TM</sup> platform.
+Refer to the following [page](https://github.com/ATLFlight/ATLFlightDocs/blob/master/SnapdragonRTPSInstallation.md) for RTPS installation on Snapdragon Flight<sup>TM</sup> platform.
 
 #### Install Snapdragon Machine Vision SDK
 
@@ -124,73 +118,6 @@ adb push snapdragon-flight-license.bin /usr/lib/
 adb shell sync
 ```
 
-### Clone and build sample code
-
-#### Setup ROS workspace on target
-
-```
-adb shell
-source /home/linaro/.bashrc
-mkdir -p /home/linaro/ros_ws/src
-cd /home/linaro/ros_ws/src
-catkin_init_workspace
-cd ../
-catkin_make
-echo "source /home/linaro/ros_ws/devel/setup.bash" >> /home/linaro/.bashrc
-```
-
-This ensures that the ROS workspace is setup correctly.
-
-#### Clone the sample code
-* The repo may be cloned from [here]( from https://github.com/ATLFlight/ros-examples.git) directly on the target, or cloned on the host computer and then pushed to the target using ADB. The recommended method is to clone directly on the target.
-
-```
-adb shell
-source /home/linaro/.bashrc
-roscd
-cd ../src
-git clone https://github.com/ATLFlight/ros-examples.git snap_ros_examples
-```
-
-* Build the code
-
-```
-adb shell
-source /home/linaro/.bashrc
-roscd
-cd ..
-catkin_make snap_vislam_node
-```
-
-**NOTE**: To clean the code, remove the "build" folder
-
-```
-adb shell
-source /home/linaro/.bashrc
-roscd
-cd ../
-rm -rf build
-```
-
-## Run sample code
-
-This example assumes that the user is familiar with ROS framework.  If you are new to ROS, refer to [ROS Start Guide](http://wiki.ros.org/ROS/StartGuide) first to get started.
-
-This assumes that the ROS build command is successful.
-
-**NOTE**: This process is for running VISLAM in standalone mode only.  Integration with a flight stack such as PX4 is not verified.
-
-**NOTE**: The steps below show each application to be run in a separate adb shell.  This is for illustration purpose only.  The applications, like **rocore**, **imu_app**, **snap_vislam_node** can be run in the background to meet your development/runtime workflow.
-
-### Start roscore
-Start roscore in a shell as follows:
-
-```
-adb shell
-source /home/linaro/.bashrc
-roscore
-```
-
 ### Start imu_app application
 
 Starting the **imu_app** is **MANDATORY**.  Without this, the sample code will not run and the behavior is unpredictable.  **imu_app** is already pre-installed on the target.
@@ -215,33 +142,16 @@ sensor_imu_tester 5
 
 The app runs for 5 seconds and collects the IMU data received from the ADSP. It would generate a few IMU_*.txt files. If these files get generated and they contain IMU samples, then the IMU data reception mechanism on apps processor works fine.
 
-### Start VISLAM ROS node
-To start the "snap_vislam_node" ROS node, the 2 steps above: [start roscore](#start-roscore) and [start imu_app](#start_imu_app_application) should be completed to make this work.
-
-```
-adb shell
-source /home/linaro/.bashrc
-rosrun snap_ros_examples snap_vislam_node
-```
-
-### Verification
-If the above steps are complete and the applications starts successfully, the snap_vislam_node will publish /vislam/pose and /vislam/odometry topics. To view these topics, use the rostopic echo command.
-
-```
-adb shell
-source /home/linaro/.bashrc
-rostopic echo /vislam/pose
-```
 
 ## Snapdragon Machine Vision VISLAM FAQs
 
-### I do not see any ROS vislam/pose topic when I run the snap_ros_node
+### I do not see any RTPS vislam/pose topic when I run the snap_rtps_node
 
-VISLAM requires a minimum set of points to initialize correctly.  If the points are not detected, the pose quality reported by the algorithm is "FAIL" or "INITIALIZING".   In this case, there won't be any ROS vislam/pose topics published. One scenario is if board is laying on a surface and the downward camera is very close to the surface.
+VISLAM requires a minimum set of points to initialize correctly.  If the points are not detected, the pose quality reported by the algorithm is "FAIL" or "INITIALIZING".   In this case, there won't be any RTPS vislam/pose topics published. One scenario is if board is laying on a surface and the downward camera is very close to the surface.
 
-To fix this, lift up the board a few inches from the surface and set it stationary for few seconds until the initalization is complete.  Once completed, you should see the ROS vislam/pose topics published.
+To fix this, lift up the board a few inches from the surface and set it stationary for few seconds until the initalization is complete.  Once completed, you should see the RTPS vislam/pose topics published.
 
-The VISLAM algorithm has a parameter, "noInitWhenMoving", that allows to enable or disable initialization when moving. The current example sets this parameter to be **true**, and hence you need to keep the board stationary.  To change the parameter edit the [SnapdragonRosNodeVislam.cpp](src/nodes/SnapdragonRosNodeVislam.cpp) file as follows:
+The VISLAM algorithm has a parameter, "noInitWhenMoving", that allows to enable or disable initialization when moving. The current example sets this parameter to be **true**, and hence you need to keep the board stationary.  To change the parameter edit the [SnapdragonRtpNodeVislam.cpp](src/nodes/SnapdragonRtpsNodeVislam.cpp) file as follows:
 
 ```
   vislamParams.noInitWhenMoving = false;
@@ -251,11 +161,9 @@ Once the change is done, recompile the code and re-test.
 
 **NOTE**: Allowing for initialization when board is moving will potentially give bad VISLAM pose information.  The recommended setting is as used in the example.
 
-### I do see the ROS vislam/pose topics published how do I verify if the VISLAM is working?
+### I do see the RTPS vislam/pose topics published how do I verify if the VISLAM is working?
 
-The example demonstrates console echo for vislam/pose information.  To validate if the vislam/pose is correct, you can move the board exercising all 6DOF motion to see the x,y,z changes in both the linear and rotational axes.  For example, if you move the board up and down, the "z" axes of the linear pose should change.  Similarily if you rotate the board on the "z" axes, the "z" value for the quaternion form should change.  See the [ROS pose message](http://docs.ros.org/api/geometry_msgs/html/msg/Pose.html) for the details on the pose message fields.
-
-Since the example is generating a ROS topic, ROS visulation tool like RVIZ can be used to view the pose information. The RVIZ integration is left as an exercise for the user.
+The example demonstrates console echo for vislam/pose information.  To validate if the vislam/pose is correct, you can move the board exercising all 6DOF motion to see the x,y,z changes in both the linear and rotational axes.  For example, if you move the board up and down, the "z" axes of the linear pose should change.  Similarily if you rotate the board on the "z" axes, the "z" value for the quaternion form should change.
 
 ### How do I set my own values for the initial IMU-to-camera transformation? <a name="imu-to-camera-transformation"></a>
 
