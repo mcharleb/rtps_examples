@@ -30,17 +30,76 @@
  *
  ****************************************************************************/
 
-#include "SnapdragonRosNodeVislam.hpp"
-#include <geometry_msgs/TransformStamped.h>
+#include "PoseStampedPublisher.hpp"
+#include "OdometryPublisher.hpp"
+#include <mvVISLAM.h>
+#include "SnapdragonVislamManager.hpp"
 
-int main(int argc, char **argv) {
-//Initializes ROS, and sets up a node
-  ros::init(argc,argv,"SnapdragonVislam");
-  ros::NodeHandle nh;
-  Snapdragon::RosNode::Vislam vislam(nh);
-  vislam.Initialize();
-  vislam.Start();
-  ros::spin();
-  vislam.Stop();
-  return 0;
+/**
+ * Wrapper Ros Node to support VISLAM from Snapdragon flight platform.
+ */
+namespace Snapdragon {
+  namespace RtpsNode {
+    class Vislam;
+  }
 }
+
+/**
+ * Rtps Vislam Node that uses Snapdragon platform to get VISLAM pose data.
+ */
+class Snapdragon::RtpsNode::Vislam
+{
+public:
+  /**
+   * Constructor.
+   * @param nh
+   *   Ros Node handle to intialize the node.
+   */
+  Vislam( NodeHandle nh );
+
+  /**
+   * Initialized the Ros Vislam Node. This does the initialization for the
+   * Snapdragon VISLAM module as well.
+   * @return int32_t
+   *  0 = success
+   * otherwise = failure;
+   **/
+  int32_t Initialize();
+
+  /**
+   * Start the VISLAM node processing.
+   * @return int32_t
+   *  0 = success
+   * otherwise = false;
+   **/
+  int32_t Start();
+
+  /**
+   * Stops the VISLAM processing thread.
+   * @return int32_t
+   *  0 = success;
+   * otherwise = false;
+   **/
+  int32_t Stop();
+
+  /**
+   * Destructor for the node.
+   */
+  ~Vislam();
+private: 
+
+  // class methods
+  int32_t PublishVislamData( mvVISLAMPose& vislamPose, int64_t vislamFrameId, uint64_t timestamp_ns );
+  void ThreadMain();
+
+  // data members;
+  std::thread       vislam_process_thread_;
+  std::atomic<bool> thread_started_;
+  std::atomic<bool> thread_stop_;
+  std::atomic<bool> vislam_initialized_;
+
+
+  // RTPS publishers
+  PoseStampedPublisher   pub_vislam_pose_;
+  OdometryPublisher   pub_vislam_odometry_;
+};

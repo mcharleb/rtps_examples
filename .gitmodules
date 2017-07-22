@@ -1,0 +1,6 @@
+[submodule "src/nodes/Matrix"]
+	path = src/nodes/Matrix
+	url = https://github.com/PX4/Matrix.git
+[submodule "src/nodes/rtps-msgs"]
+	path = src/nodes/rtps-msgs
+	url = https://github.com/mcharleb/rtps_robotics_msgs.git

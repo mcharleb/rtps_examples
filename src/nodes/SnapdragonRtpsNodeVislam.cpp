@@ -29,52 +29,51 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  ****************************************************************************/
-#include "SnapdragonRosNodeVislam.hpp"
+#include "SnapdragonRtpsNodeVislam.hpp"
 
-#include <geometry_msgs/PointStamped.h>
-#include <geometry_msgs/PoseStamped.h>
-#include <geometry_msgs/TransformStamped.h>
-#include <geometry_msgs/Vector3.h>
-#include <nav_msgs/Odometry.h>
-#include <tf2/LinearMath/Matrix3x3.h>
-#include <tf2_ros/transform_broadcaster.h>
-#include <tf2_ros/buffer.h>
+#include <rtps-msgs/PoseStamped.h>
+#include <rtps-msgs/TransformStamped.h>
+#include <rtps-msgs/Vector3.h>
+#include <rtps-msgs/Odometry.h>
+#include <matrix/Dcm.hpp>
+#include <matrix/Quaternion.hpp>
 
-Snapdragon::RosNode::Vislam::Vislam( ros::NodeHandle nh ) : nh_(nh)
+Snapdragon::RtpsNode::Vislam::Vislam( NodeHandle nh ) : nh_(nh)
 {
-  pub_vislam_pose_ = nh_.advertise<geometry_msgs::PoseStamped>("vislam/pose",1);
-  pub_vislam_odometry_ = nh_.advertise<nav_msgs::Odometry>("vislam/odometry",1);
+  
+  pub_vislam_pose_.init();
+  pub_vislam_odometry_.init();
   vislam_initialized_ = false;
   thread_started_ = false;
   thread_stop_ = false;
   // sleep here so tf buffer can get populated
-  ros::Duration(1).sleep(); // sleep for 1 second
+  //ros::Duration(1).sleep(); // sleep for 1 second
 }
 
-Snapdragon::RosNode::Vislam::~Vislam()
+Snapdragon::RtpsNode::Vislam::~Vislam()
 {
   Stop();
 }
 
-int32_t Snapdragon::RosNode::Vislam::Initialize()
+int32_t Snapdragon::RtpsNode::Vislam::Initialize()
 { 
   vislam_initialized_ = true;
   return 0;
 }
 
-int32_t Snapdragon::RosNode::Vislam::Start() {
+int32_t Snapdragon::RtpsNode::Vislam::Start() {
 // start vislam processing thread.
   if( !thread_started_ ) {
     thread_started_ = true;
-    vislam_process_thread_ = std::thread( &Snapdragon::RosNode::Vislam::ThreadMain, this );
+    vislam_process_thread_ = std::thread( &Snapdragon::RtpsNode::Vislam::ThreadMain, this );
   }
   else {
-    ROS_WARN_STREAM( "Snapdragon::RosNodeVislam::Start() VISLAM Thread already running." );
+    ROS_WARN_STREAM( "Snapdragon::RtpsNodeVislam::Start() VISLAM Thread already running." );
   }
   return 0;
 }
 
-int32_t Snapdragon::RosNode::Vislam::Stop() {
+int32_t Snapdragon::RtpsNode::Vislam::Stop() {
   if( thread_started_ ) {
     thread_stop_ = true;
     if( vislam_process_thread_.joinable() ) {
@@ -84,7 +83,7 @@ int32_t Snapdragon::RosNode::Vislam::Stop() {
   return 0;
 }
 
-void Snapdragon::RosNode::Vislam::ThreadMain() {
+void Snapdragon::RtpsNode::Vislam::ThreadMain() {
  mvCameraConfiguration config;
   // Set up camera configuraiton (snapdragon down facing camera)
   memset(&config, 0, sizeof(config));
@@ -163,14 +162,14 @@ void Snapdragon::RosNode::Vislam::ThreadMain() {
   param.mv_cpa_config = cpaConfig;   
   Snapdragon::VislamManager vislam_man;
   if( vislam_man.Initialize( param, vislamParams ) != 0  ) {
-    ROS_WARN_STREAM( "Snapdragon::RosNodeVislam::VislamThreadMain: Error initializing the VISLAM Manager " );
+    ROS_WARN_STREAM( "Snapdragon::RtpsNodeVislam::VislamThreadMain: Error initializing the VISLAM Manager " );
     thread_started_ = false;
     return;
   }
 
 // start the VISLAM processing.
   if( vislam_man.Start() != 0 ) {
-    ROS_WARN_STREAM( "Snapdragon::RosNodeVislam::VislamThreadMain: Error Starting the VISLAM manager" );
+    ROS_WARN_STREAM( "Snapdragon::RtpsNodeVislam::VislamThreadMain: Error Starting the VISLAM manager" );
     thread_started_ = false;
     return;
   }
@@ -191,17 +190,17 @@ void Snapdragon::RosNode::Vislam::ThreadMain() {
       }
     }
     else {
-      ROS_WARN_STREAM( "Snapdragon::RosNodeVislam::VislamThreadMain: Warning Getting Pose Information" );
+      ROS_WARN_STREAM( "Snapdragon::RtpsNodeVislam::VislamThreadMain: Warning Getting Pose Information" );
     }
   }
   thread_started_ = false;
   // the thread is shutting down. Stop the vislam Manager.
   vislam_man.Stop();
-  ROS_INFO_STREAM( "Snapdragon::RosNodeVislam::VislamThreadMain: Exising VISLAM Thread" );
+  ROS_INFO_STREAM( "Snapdragon::RtpsNodeVislam::VislamThreadMain: Exising VISLAM Thread" );
   return;
 }
 
-int32_t Snapdragon::RosNode::Vislam::PublishVislamData( mvVISLAMPose& vislamPose, int64_t vislamFrameId, uint64_t timestamp_ns  ) {
+int32_t Snapdragon::RtpsNode::Vislam::PublishVislamData( mvVISLAMPose& vislamPose, int64_t vislamFrameId, uint64_t timestamp_ns  ) {
   geometry_msgs::PoseStamped pose_msg;
   ros::Time frame_time;
   frame_time.sec = (int32_t)(timestamp_ns/1000000000UL);
@@ -211,8 +210,8 @@ int32_t Snapdragon::RosNode::Vislam::PublishVislamData( mvVISLAMPose& vislamPose
   pose_msg.header.seq = vislamFrameId;
 
   // translate vislam pose to ROS pose
-  tf2::Matrix3x3 R(
-    vislamPose.bodyPose.matrix[0][0],
+  Dcm R(
+    { vislamPose.bodyPose.matrix[0][0],
     vislamPose.bodyPose.matrix[0][1],
     vislamPose.bodyPose.matrix[0][2],
     vislamPose.bodyPose.matrix[1][0],
@@ -220,20 +219,19 @@ int32_t Snapdragon::RosNode::Vislam::PublishVislamData( mvVISLAMPose& vislamPose
     vislamPose.bodyPose.matrix[1][2],
     vislamPose.bodyPose.matrix[2][0],
     vislamPose.bodyPose.matrix[2][1],
-    vislamPose.bodyPose.matrix[2][2]); 
-  tf2::Quaternion q;
-  R.getRotation(q);
+    vislamPose.bodyPose.matrix[2][2] }); 
+  Quaternion q(R);
   pose_msg.pose.position.x = vislamPose.bodyPose.matrix[0][3];
   pose_msg.pose.position.y = vislamPose.bodyPose.matrix[1][3];
   pose_msg.pose.position.z = vislamPose.bodyPose.matrix[2][3];
-  pose_msg.pose.orientation.x = q.getX();
-  pose_msg.pose.orientation.y = q.getY();
-  pose_msg.pose.orientation.z = q.getZ();
-  pose_msg.pose.orientation.w = q.getW();
+  pose_msg.pose.orientation.x = q(0);
+  pose_msg.pose.orientation.y = q(1);
+  pose_msg.pose.orientation.z = q(2);
+  pose_msg.pose.orientation.w = q(3);
   pub_vislam_pose_.publish(pose_msg);
 
   //publish the odometry message.
-  nav_msgs::Odometry odom_msg;
+  Odometry odom_msg;
   odom_msg.header.stamp = frame_time;
   odom_msg.header.frame_id = "vislam";
   odom_msg.pose.pose = pose_msg.pose;
@@ -252,6 +250,7 @@ int32_t Snapdragon::RosNode::Vislam::PublishVislamData( mvVISLAMPose& vislamPose
   }
   pub_vislam_odometry_.publish(odom_msg); 
 
+#if 0
   // compute transforms
   std::vector<geometry_msgs::TransformStamped> transforms;
   geometry_msgs::TransformStamped transform;
@@ -272,5 +271,6 @@ int32_t Snapdragon::RosNode::Vislam::PublishVislamData( mvVISLAMPose& vislamPose
   // broadcast transforms
   static tf2_ros::TransformBroadcaster br;
   br.sendTransform(transforms);     
+#endif
 }
 
