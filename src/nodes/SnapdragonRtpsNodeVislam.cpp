@@ -31,14 +31,15 @@
  ****************************************************************************/
 #include "SnapdragonRtpsNodeVislam.hpp"
 
-#include <rtps-msgs/PoseStamped.h>
-#include <rtps-msgs/TransformStamped.h>
-#include <rtps-msgs/Vector3.h>
-#include <rtps-msgs/Odometry.h>
+#include <PoseStamped.h>
+//#include <rtps-msgs/TransformStamped.h>
+#include <Vector3.h>
+#include <Odometry.h>
 #include <matrix/Dcm.hpp>
 #include <matrix/Quaternion.hpp>
+#include <stdio.h>
 
-Snapdragon::RtpsNode::Vislam::Vislam( NodeHandle nh ) : nh_(nh)
+Snapdragon::RtpsNode::Vislam::Vislam()
 {
   
   pub_vislam_pose_.init();
@@ -68,7 +69,7 @@ int32_t Snapdragon::RtpsNode::Vislam::Start() {
     vislam_process_thread_ = std::thread( &Snapdragon::RtpsNode::Vislam::ThreadMain, this );
   }
   else {
-    ROS_WARN_STREAM( "Snapdragon::RtpsNodeVislam::Start() VISLAM Thread already running." );
+    printf( "Snapdragon::RtpsNodeVislam::Start() VISLAM Thread already running.\n" );
   }
   return 0;
 }
@@ -162,14 +163,14 @@ void Snapdragon::RtpsNode::Vislam::ThreadMain() {
   param.mv_cpa_config = cpaConfig;   
   Snapdragon::VislamManager vislam_man;
   if( vislam_man.Initialize( param, vislamParams ) != 0  ) {
-    ROS_WARN_STREAM( "Snapdragon::RtpsNodeVislam::VislamThreadMain: Error initializing the VISLAM Manager " );
+    printf( "Snapdragon::RtpsNodeVislam::VislamThreadMain: Error initializing the VISLAM Manager\n" );
     thread_started_ = false;
     return;
   }
 
 // start the VISLAM processing.
   if( vislam_man.Start() != 0 ) {
-    ROS_WARN_STREAM( "Snapdragon::RtpsNodeVislam::VislamThreadMain: Error Starting the VISLAM manager" );
+    printf( "Snapdragon::RtpsNodeVislam::VislamThreadMain: Error Starting the VISLAM manager\n" );
     thread_started_ = false;
     return;
   }
@@ -190,62 +191,62 @@ void Snapdragon::RtpsNode::Vislam::ThreadMain() {
       }
     }
     else {
-      ROS_WARN_STREAM( "Snapdragon::RtpsNodeVislam::VislamThreadMain: Warning Getting Pose Information" );
+      printf( "Snapdragon::RtpsNodeVislam::VislamThreadMain: Warning Getting Pose Information\n" );
     }
   }
   thread_started_ = false;
   // the thread is shutting down. Stop the vislam Manager.
   vislam_man.Stop();
-  ROS_INFO_STREAM( "Snapdragon::RtpsNodeVislam::VislamThreadMain: Exising VISLAM Thread" );
+  printf( "Snapdragon::RtpsNodeVislam::VislamThreadMain: Exising VISLAM Thread\n" );
   return;
 }
 
 int32_t Snapdragon::RtpsNode::Vislam::PublishVislamData( mvVISLAMPose& vislamPose, int64_t vislamFrameId, uint64_t timestamp_ns  ) {
-  geometry_msgs::PoseStamped pose_msg;
-  ros::Time frame_time;
-  frame_time.sec = (int32_t)(timestamp_ns/1000000000UL);
-  frame_time.nsec = (int32_t)(timestamp_ns % 1000000000UL);
-  pose_msg.header.frame_id = "vislam";
-  pose_msg.header.stamp = frame_time;
-  pose_msg.header.seq = vislamFrameId;
+  PoseStamped pose_msg;
+  Time frame_time;
+  frame_time.sec((int32_t)(timestamp_ns/1000000000UL));
+  frame_time.nsec((int32_t)(timestamp_ns % 1000000000UL));
+  pose_msg.header().frame_id("vislam");
+  pose_msg.header().stamp(frame_time);
+  pose_msg.header().seq(vislamFrameId);
 
   // translate vislam pose to ROS pose
-  Dcm R(
-    { vislamPose.bodyPose.matrix[0][0],
-    vislamPose.bodyPose.matrix[0][1],
-    vislamPose.bodyPose.matrix[0][2],
-    vislamPose.bodyPose.matrix[1][0],
-    vislamPose.bodyPose.matrix[1][1],
-    vislamPose.bodyPose.matrix[1][2],
-    vislamPose.bodyPose.matrix[2][0],
-    vislamPose.bodyPose.matrix[2][1],
-    vislamPose.bodyPose.matrix[2][2] }); 
+  matrix::Dcm R(
+    { vislamPose.bodyPose().matrix[0][0],
+    vislamPose.bodyPose().matrix[0][1],
+    vislamPose.bodyPose().matrix[0][2],
+    vislamPose.bodyPose().matrix[1][0],
+    vislamPose.bodyPose().matrix[1][1],
+    vislamPose.bodyPose().matrix[1][2],
+    vislamPose.bodyPose().matrix[2][0],
+    vislamPose.bodyPose().matrix[2][1],
+    vislamPose.bodyPose().matrix[2][2] }); 
   Quaternion q(R);
-  pose_msg.pose.position.x = vislamPose.bodyPose.matrix[0][3];
-  pose_msg.pose.position.y = vislamPose.bodyPose.matrix[1][3];
-  pose_msg.pose.position.z = vislamPose.bodyPose.matrix[2][3];
-  pose_msg.pose.orientation.x = q(0);
-  pose_msg.pose.orientation.y = q(1);
-  pose_msg.pose.orientation.z = q(2);
-  pose_msg.pose.orientation.w = q(3);
+  pose_msg.pose().position().x(vislamPose.bodyPose.matrix[0][3]);
+  pose_msg.pose().position().y(vislamPose.bodyPose.matrix[1][3]);
+  pose_msg.pose().position().z(vislamPose.bodyPose.matrix[2][3]);
+  pose_msg.pose().orientation().x(q(0));
+  pose_msg.pose().orientation().y(q(1));
+  pose_msg.pose().orientation().z(q(2));
+  pose_msg.pose().orientation().w(q(3));
   pub_vislam_pose_.publish(pose_msg);
 
   //publish the odometry message.
   Odometry odom_msg;
-  odom_msg.header.stamp = frame_time;
-  odom_msg.header.frame_id = "vislam";
-  odom_msg.pose.pose = pose_msg.pose;
-  odom_msg.twist.twist.linear.x = vislamPose.velocity[0];
-  odom_msg.twist.twist.linear.y = vislamPose.velocity[1];
-  odom_msg.twist.twist.linear.z = vislamPose.velocity[2];
-  odom_msg.twist.twist.angular.x = vislamPose.angularVelocity[0];
-  odom_msg.twist.twist.angular.y = vislamPose.angularVelocity[1];
-  odom_msg.twist.twist.angular.z = vislamPose.angularVelocity[2];
+  odom_msg.header().stamp(frame_time);
+  odom_msg.header().frame_id("vislam");
+  odom_msg.pose().pose(pose_msg.pose);
+  odom_msg.twist().twist().linear().x(vislamPose.velocity[0]);
+  odom_msg.twist().twist().linear().y(vislamPose.velocity[1]);
+  odom_msg.twist().twist().linear().z(vislamPose.velocity[2]);
+  odom_msg.twist().twist().angular().x(vislamPose.angularVelocity[0]);
+  odom_msg.twist().twist().angular().y(vislamPose.angularVelocity[1]);
+  odom_msg.twist().twist().angular().z(vislamPose.angularVelocity[2]);
 
   //set the error covariance for the pose.
   for( int16_t i = 0; i < 6; i++ ) {
     for( int16_t j = 0; j < 6; j++ ) {
-      odom_msg.pose.covariance[ i*6 + j ] = vislamPose.errCovPose[i][j];
+      odom_msg.pose().covariance[ i*6 + j ] = vislamPose.errCovPose[i][j];
     }
   }
   pub_vislam_odometry_.publish(odom_msg); 

@@ -4,3 +4,6 @@
 [submodule "src/nodes/rtps-msgs"]
 	path = src/nodes/rtps-msgs
 	url = https://github.com/mcharleb/rtps_robotics_msgs.git
+[submodule "cmake_hexagon"]
+	path = cmake_hexagon
+	url = http://github.com/ATLFlight/cmake_hexagon

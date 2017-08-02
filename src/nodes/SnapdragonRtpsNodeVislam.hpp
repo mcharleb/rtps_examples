@@ -30,8 +30,8 @@
  *
  ****************************************************************************/
 
-#include "PoseStampedPublisher.hpp"
-#include "OdometryPublisher.hpp"
+#include "PoseStampedPublisher.h"
+#include "OdometryPublisher.h"
 #include <mvVISLAM.h>
 #include "SnapdragonVislamManager.hpp"
 
@@ -55,7 +55,7 @@ public:
    * @param nh
    *   Ros Node handle to intialize the node.
    */
-  Vislam( NodeHandle nh );
+  Vislam();
 
   /**
    * Initialized the Ros Vislam Node. This does the initialization for the

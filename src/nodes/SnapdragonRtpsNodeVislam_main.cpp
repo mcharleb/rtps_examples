@@ -34,12 +34,12 @@
 
 int main(int argc, char **argv) {
 //Initializes ROS, and sets up a node
-  ros::init(argc,argv,"SnapdragonVislam");
-  ros::NodeHandle nh;
-  Snapdragon::RosNode::Vislam vislam(nh);
+  //ros::init(argc,argv,"SnapdragonVislam");
+  //ros::NodeHandle nh;
+  Snapdragon::RtpsNode::Vislam vislam();
   vislam.Initialize();
   vislam.Start();
-  ros::spin();
+  //ros::spin();
   vislam.Stop();
   return 0;
 }
